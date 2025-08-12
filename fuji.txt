@@ -1,0 +1,221 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RbxAnalyticsService = game:GetService("RbxAnalyticsService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local Window = Fluent:CreateWindow({Title = "Banana Farm Script", SubTitle = "by Xin", TabWidth = 160, Size = UDim2.fromOffset(580, 460), Acrylic = true, Theme = "Rose", MinimizeKey = Enum.KeyCode.LeftControl})
+local Tab = Window:AddTab({Title = "Main", Icon = "home"})
+
+local FARM_POS = Vector3.new(2713.29004, 5.82079363, -434.403656)
+local SELL_POS = Vector3.new(365.992188, 4.5835247, 1143.32263)
+local autoFarm, antiAFK, autoEat, autoWater, selling = false, false, false, false, false
+local cleaverCheck, eatCheck, waterCheck, bananaTime = 0, 0, 0, 0
+local bananaIdx, bananaCount, bananaText = 1, 0
+local bankModels, teleDropdown = {}
+
+local function remote(path, ...)
+    pcall(function() ReplicatedStorage:WaitForChild("Remote"):WaitForChild(path):FireServer(...) end)
+end
+
+local function getBananaCount(text)
+    return text and tonumber(text:match("x(%d+)")) or 0
+end
+
+local function updateBananaUI()
+    local ok, text = pcall(function() return LocalPlayer.PlayerGui.Inventory.Main.List.Body.Banana.Amount.Text end)
+    if ok then bananaCount, bananaText = getBananaCount(text), text else bananaCount, bananaText = 0, "N/A" end
+    if bananaCountPara then bananaCountPara:SetDesc("🍌 Count: " .. bananaCount .. "\n📄 Text: " .. bananaText) end
+end
+
+local function checkCleaver()
+    local t = tick()
+    if t - cleaverCheck >= 5 then
+        cleaverCheck = t
+        if not Character:FindFirstChild("Cleaver") then remote("Inventory", "Use", "Cleaver") end
+    end
+end
+
+local function checkEat()
+    local t = tick()
+    if autoEat and t - eatCheck >= 5 then
+        eatCheck = t
+        local ok, hunger = pcall(function() return LocalPlayer.Status.Hunger.Value end)
+        if ok and hunger < 60 then remote("Inventory", "Use", "Bread") end
+    end
+end
+
+local function checkWater()
+    local t = tick()
+    if autoWater and t - waterCheck >= 5 then
+        waterCheck = t
+        local ok, thirst = pcall(function() return LocalPlayer.Status.Thirsty.Value end)
+        if ok and thirst < 60 then remote("Inventory", "Use", "Water") end
+    end
+end
+
+local function getBananas()
+    local bananas = {}
+    local farm = workspace:FindFirstChild("Farm")
+    if farm then
+        local folder = farm:FindFirstChild("Banana")
+        if folder then
+            for _, b in pairs(folder:GetChildren()) do
+                if b:IsA("MeshPart") and b.Name == "Banana" and b:FindFirstChild("TouchInterest") then
+                    table.insert(bananas, b)
+                end
+            end
+        end
+    end
+    return bananas
+end
+
+local function farmBanana()
+    if selling or not autoFarm then return end
+    local bananas = getBananas()
+    if #bananas == 0 then return end
+    
+    local t = tick()
+    if t - bananaTime >= 10 then
+        bananaIdx = bananaIdx + 1
+        if bananaIdx > #bananas then bananaIdx = 1 end
+        bananaTime = t
+    end
+    
+    if bananaIdx > #bananas then bananaIdx = 1 end
+    local target = bananas[bananaIdx]
+    if target and target:FindFirstChild("TouchInterest") then
+        HumanoidRootPart.CFrame = CFrame.new(target.Position + Vector3.new(0, 2, 0))
+        wait(0.1)
+        firetouchinterest(HumanoidRootPart, target, 0)
+        wait(0.1)
+        firetouchinterest(HumanoidRootPart, target, 1)
+    else
+        bananaIdx = bananaIdx + 1
+        bananaTime = t
+    end
+end
+
+local function sellBananas()
+    selling = true
+    HumanoidRootPart.CFrame = CFrame.new(SELL_POS.X, SELL_POS.Y, SELL_POS.Z, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+    wait(0.5)
+    
+    while true do
+        local ok, text = pcall(function() return LocalPlayer.PlayerGui.Inventory.Main.List.Body.Banana.Amount.Text end)
+        if not ok or getBananaCount(text) < 60 then break end
+        remote("Economy", "Sell", "Banana", "60")
+        wait(0.1)
+    end
+    
+    HumanoidRootPart.CFrame = CFrame.new(FARM_POS.X, FARM_POS.Y, FARM_POS.Z, -0.99904561, -0.043678835, -6.72199531e-06, -0.0436372757, 0.99808836, 0.0437650755, -0.00190489832, 0.0437235981, -0.999041796)
+    wait(0.5)
+    bananaTime = tick()
+    selling = false
+end
+
+local function checkSell()
+    if not selling and autoFarm then
+        local ok, text = pcall(function() return LocalPlayer.PlayerGui.Inventory.Main.List.Body.Banana.Amount.Text end)
+        if ok and getBananaCount(text) >= 60 then sellBananas() end
+    end
+end
+
+local function antiAFKLoop()
+    while true do
+        if antiAFK then
+            local actions = {
+                function() LocalPlayer:GetMouse().Hit = workspace.CurrentCamera:ScreenPointToRay(math.random(0, 800), math.random(0, 600)).Origin end,
+                function() game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.W, false, game) wait(0.1) game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.W, false, game) end,
+                function() if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid:Move(Vector3.new(math.random(-1,1), 0, math.random(-1,1))) wait(0.2) LocalPlayer.Character.Humanoid:Move(Vector3.new(0, 0, 0)) end end
+            }
+            pcall(actions[math.random(1, #actions)])
+            wait(math.random(30, 90))
+        else
+            wait(5)
+        end
+    end
+end
+
+local function getAllBankModels()
+    local models = {}
+    bankModels = {}
+    local bank = workspace:FindFirstChild("Bank")
+    if bank then
+        for _, child in pairs(bank:GetChildren()) do
+            if child:IsA("Model") then
+                table.insert(models, child.Name)
+                bankModels[child.Name] = child
+            end
+        end
+    end
+    return models
+end
+
+local function teleportToModel(name)
+    if bankModels[name] then
+        local part = bankModels[name].PrimaryPart or bankModels[name]:FindFirstChildWhichIsA("Part")
+        if part then HumanoidRootPart.CFrame = CFrame.new(part.Position + Vector3.new(0, 5, 0)) end
+    end
+end
+
+local function refreshBank()
+    local models = getAllBankModels()
+    if #models > 0 then
+        local values = {"Select a model"}
+        for _, name in ipairs(models) do table.insert(values, name) end
+        teleDropdown:SetValues(values)
+        teleDropdown:SetValue("Select a model")
+    else
+        teleDropdown:SetValues({"No models found"})
+        teleDropdown:SetValue("No models found")
+    end
+end
+
+Tab:AddSection("🍌 Banana Farm Controls")
+Tab:AddToggle("AutoFarm", {Title = "Auto Farm Banana", Default = false, Callback = function(v) autoFarm = v bananaTime = tick() end})
+
+Tab:AddSection("📊 Banana Status")
+bananaCountPara = Tab:AddParagraph({Title = "Banana Count", Content = "🍌 Count: 0\n📄 Text: N/A"})
+
+Tab:AddSection("🛡️ Anti AFK")
+Tab:AddToggle("AntiAFK", {Title = "Anti AFK", Default = false, Callback = function(v) antiAFK = v end})
+
+Tab:AddSection("🍽️ Auto Needs")
+Tab:AddToggle("AutoEat", {Title = "Auto Eat", Default = false, Callback = function(v) autoEat = v eatCheck = 0 end})
+Tab:AddToggle("AutoWater", {Title = "Auto Water", Default = false, Callback = function(v) autoWater = v waterCheck = 0 end})
+
+Tab:AddSection("🏦 Bank Teleport")
+teleDropdown = Tab:AddDropdown("BankTeleport", {Title = "TP BANK", Values = {"Click Refresh first"}, Default = "Click Refresh first", Callback = function(v) if v ~= "Click Refresh first" and v ~= "No models found" and v ~= "Select a model" then teleportToModel(v) end end})
+Tab:AddButton({Title = "🔄 Refresh Bank Models", Callback = refreshBank})
+
+spawn(function()
+    while true do
+        if autoFarm then checkCleaver() farmBanana() end
+        checkEat()
+        checkWater()
+        wait(0.5)
+    end
+end)
+
+spawn(function()
+    while true do
+        updateBananaUI()
+        checkSell()
+        wait(1)
+    end
+end)
+
+spawn(antiAFKLoop)
+
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = Character:WaitForChild("Humanoid")
+    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+    cleaverCheck, bananaIdx, bananaTime = 0, 1, tick()
+end)
+
+if Character and Humanoid and HumanoidRootPart then bananaTime = tick() end
