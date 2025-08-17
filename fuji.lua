@@ -8,12 +8,12 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
--- โหลด Fluent Library
+
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- สร้าง Window
+
 local Window = Fluent:CreateWindow({
     Title = "Banana Farm Script",
     SubTitle = "by Xin",
@@ -24,36 +24,33 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.LeftControl
 })
 
--- สร้าง Tabs
 local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "home" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- ตำแหน่งต่างๆ
+
 local FARM_POSITION = Vector3.new(2713.29004, 5.82079363, -434.403656)
 local SELL_POSITION = Vector3.new(365.992188, 4.5835247, 1143.32263)
 
--- ตัวแปรสำหรับควบคุม
+
 local isAutoFarmEnabled = false
 local isAntiAFKEnabled = false
 local isSellingMode = false
 local lastCleaverCheck = 0
 local currentBananaIndex = 1
 local bananaStartTime = 0
-local MAX_WAIT_TIME = 10 -- 10 วินาที
+local MAX_WAIT_TIME = 10
 
--- ตัวแปรสำหรับ UI
 local currentBananaCount = 0
 local bananaCountParagraph
 
--- ฟังก์ชันเช็คว่าตัวละครถือ Cleaver หรือไม่ (เฉพาะในมือ)
+
 local function isHoldingCleaver()
     local cleaverInHand = Character:FindFirstChild("Cleaver")
     return cleaverInHand ~= nil
 end
 
--- ฟังก์ชันใช้ Cleaver ผ่านรีโมท
 local function useCleaver()
     local args = {
         "Use",
@@ -65,11 +62,11 @@ local function useCleaver()
     end)
 end
 
--- ฟังก์ชันแปลงข้อความเป็นตัวเลข (เช่น "x62/60" -> 62)
+
 local function getBananaCount(text)
     if not text then return 0 end
     
-    -- หาตัวเลขแรกในข้อความ (ก่อน "/" หรือ "/60")
+
     local count = text:match("x(%d+)")
     if count then
         return tonumber(count)
@@ -78,7 +75,7 @@ local function getBananaCount(text)
     return 0
 end
 
--- ฟังก์ชันอัปเดตจำนวน Banana ใน UI
+
 local function updateBananaCountDisplay()
     local success, bananaText = pcall(function()
         return LocalPlayer.PlayerGui.Inventory.Main.List.Body.Banana.Amount.Text
@@ -97,7 +94,7 @@ local function updateBananaCountDisplay()
     end
 end
 
--- ฟังก์ชันเช็คและจัดการ Cleaver ทุก 5 วินาที
+
 local function manageCleaver()
     local currentTime = tick()
     
@@ -114,7 +111,7 @@ local function manageCleaver()
     end
 end
 
--- ฟังก์ชันเทเลพอร์ต
+
 local function teleportTo(position, cframe)
     if cframe then
         HumanoidRootPart.CFrame = cframe
@@ -123,7 +120,7 @@ local function teleportTo(position, cframe)
     end
 end
 
--- ฟังก์ชันหา Banana ทั้งหมดที่มี TouchInterest
+
 local function getAllBananas()
     local bananas = {}
     local farm = workspace:FindFirstChild("Farm")
@@ -144,17 +141,15 @@ local function getAllBananas()
     return bananas
 end
 
--- ฟังก์ชันเทเลพอร์ตไปหา Banana และแตะ
 local function teleportToBanana()
     if isSellingMode or not isAutoFarmEnabled then return end
     
     local bananas = getAllBananas()
     if #bananas == 0 then return end
-    
-    -- เช็คว่าเวลาผ่านไปเกิน 10 วินาทีหรือไม่
+
     local currentTime = tick()
     if currentTime - bananaStartTime >= MAX_WAIT_TIME then
-        -- เปลี่ยนไปต้นอื่น
+
         currentBananaIndex = currentBananaIndex + 1
         if currentBananaIndex > #bananas then
             currentBananaIndex = 1
@@ -163,29 +158,29 @@ local function teleportToBanana()
         print("เปลี่ยนไปต้น Banana ที่ " .. currentBananaIndex .. " เพราะรอนานเกิน 10 วินาที")
     end
     
-    -- ตรวจสอบ index ให้อยู่ในขอบเขต
+
     if currentBananaIndex > #bananas then
         currentBananaIndex = 1
     end
     
     local targetBanana = bananas[currentBananaIndex]
     if targetBanana then
-        -- เช็คว่ายังมี TouchInterest อยู่หรือไม่
+
         local touchTransmitter = targetBanana:FindFirstChild("TouchInterest")
         if touchTransmitter and touchTransmitter:IsA("TouchTransmitter") then
-            -- เทเลพอร์ตไปหา Banana
+
             HumanoidRootPart.CFrame = CFrame.new(targetBanana.Position + Vector3.new(0, 2, 0))
             
             wait(0.1)
             
-            -- แตะ Banana
+
             firetouchinterest(HumanoidRootPart, targetBanana, 0)
             wait(0.1)
             firetouchinterest(HumanoidRootPart, targetBanana, 1)
             
             print("กำลังแตะ Banana ที่ " .. currentBananaIndex)
         else
-            -- ถ้าต้นนี้ไม่มี TouchInterest แล้ว เปลี่ยนไปต้นอื่น
+
             currentBananaIndex = currentBananaIndex + 1
             bananaStartTime = currentTime
             print("ต้น Banana ที่ " .. (currentBananaIndex-1) .. " หมดแล้ว เปลี่ยนไปต้นอื่น")
@@ -193,18 +188,16 @@ local function teleportToBanana()
     end
 end
 
--- ฟังก์ชันขาย Banana
+
 local function sellBananas()
     isSellingMode = true
-    
-    -- เทเลพอร์ตไปยังจุดขาย
+
     local sellCFrame = CFrame.new(SELL_POSITION.X, SELL_POSITION.Y, SELL_POSITION.Z, 
                                   1, 0, 0, 0, 1, 0, 0, 0, 1)
     teleportTo(nil, sellCFrame)
     
     wait(0.5)
-    
-    -- ขายจนกว่าจำนวนจะน้อยกว่า 60
+
     while true do
         local success, bananaText = pcall(function()
             return LocalPlayer.PlayerGui.Inventory.Main.List.Body.Banana.Amount.Text
@@ -223,7 +216,6 @@ local function sellBananas()
             break
         end
         
-        -- ใช้ remote ขาย
         local args = {
             "Sell",
             "Banana",
@@ -237,7 +229,7 @@ local function sellBananas()
         wait(0.1)
     end
     
-    -- เทเลพอร์ตกลับไปยังฟาร์ม
+
     local farmCFrame = CFrame.new(FARM_POSITION.X, FARM_POSITION.Y, FARM_POSITION.Z,
                                   -0.99904561, -0.043678835, -6.72199531e-06,
                                   -0.0436372757, 0.99808836, 0.0437650755,
@@ -246,20 +238,19 @@ local function sellBananas()
     
     wait(0.5)
     
-    -- รีเซ็ตเวลาเมื่อกลับมาฟาร์ม
+
     bananaStartTime = tick()
     isSellingMode = false
     
     print("กลับมาฟาร์ม รีเซ็ตเวลา")
 end
 
--- ฟังก์ชันตรวจสอบจำนวน Banana ทุก 1 วินาที
+
 local function checkBananaAmount()
     spawn(function()
         while true do
             wait(1)
-            
-            -- อัปเดต UI ทุกครั้ง
+
             updateBananaCountDisplay()
             
             if not isSellingMode and isAutoFarmEnabled then
@@ -280,15 +271,15 @@ local function checkBananaAmount()
     end)
 end
 
--- ฟังก์ชันหลักที่จะทำงานต่อเนื่อง
+
 local function mainLoop()
     spawn(function()
         while true do
             if not isSellingMode and isAutoFarmEnabled then
-                -- เช็คและจัดการ Cleaver ทุก 5 วินาที
+
                 manageCleaver()
                 
-                -- เทเลพอร์ตหา Banana
+
                 teleportToBanana()
             end
             
@@ -297,7 +288,7 @@ local function mainLoop()
     end)
 end
 
--- ฟังก์ชัน Anti AFK
+
 local function simulateMouseMovement()
     local playerMouse = LocalPlayer:GetMouse()
     local screenWidth = workspace.CurrentCamera.ViewportSize.X
@@ -445,13 +436,13 @@ local ScriptKeybind = Tabs.Main:AddKeybind("ToggleBananaFarm", {
     end
 })
 
--- ตัวแปรสำหรับ Auto Eat และ Auto Water
+
 local isAutoEatEnabled = false
 local isAutoWaterEnabled = false
 local lastEatCheck = 0
 local lastWaterCheck = 0
 
--- ฟังก์ชันใช้ Bread
+
 local function useBread()
     local args = {
         "Use",
@@ -463,7 +454,7 @@ local function useBread()
     end)
 end
 
--- ฟังก์ชันใช้ Water
+
 local function useWater()
     local args = {
         "Use",
@@ -475,7 +466,7 @@ local function useWater()
     end)
 end
 
--- ฟังก์ชันเช็ค Hunger และกิน Bread
+
 local function checkAndEat()
     if not isAutoEatEnabled then return end
     
@@ -498,7 +489,7 @@ local function checkAndEat()
     end
 end
 
--- ฟังก์ชันเช็ค Thirsty และดื่ม Water
+
 local function checkAndDrink()
     if not isAutoWaterEnabled then return end
     
@@ -521,10 +512,10 @@ local function checkAndDrink()
     end
 end
 
--- เพิ่ม Section ใหม่สำหรับ Auto Eat/Water (เพิ่มหลัง Anti AFK Section)
+
 local NeedsSection = Tabs.Main:AddSection("🍽️ Auto Needs Management")
 
--- Toggle Auto Eat
+
 local AutoEatToggle = Tabs.Main:AddToggle("AutoEat", {
     Title = "Auto Eat",
     Description = "กินขนมปังอัตโนมัติเมื่อ Hunger < 60",
@@ -533,14 +524,14 @@ local AutoEatToggle = Tabs.Main:AddToggle("AutoEat", {
         isAutoEatEnabled = state
         if state then
             print("🍞 Auto Eat Enabled!")
-            lastEatCheck = 0 -- Reset timer
+            lastEatCheck = 0
         else
             print("🍞 Auto Eat Disabled!")
         end
     end
 })
 
--- Toggle Auto Water
+
 local AutoWaterToggle = Tabs.Main:AddToggle("AutoWater", {
     Title = "Auto Water",
     Description = "ดื่มน้ำอัตโนมัติเมื่อ Thirsty < 60",
@@ -549,29 +540,29 @@ local AutoWaterToggle = Tabs.Main:AddToggle("AutoWater", {
         isAutoWaterEnabled = state
         if state then
             print("💧 Auto Water Enabled!")
-            lastWaterCheck = 0 -- Reset timer
+            lastWaterCheck = 0 
         else
             print("💧 Auto Water Disabled!")
         end
     end
 })
 
--- เพิ่มลูปสำหรับเช็ค Auto Eat และ Auto Water (เพิ่มใน Main Loop หรือสร้างลูปแยก)
+
 spawn(function()
     while true do
         checkAndEat()
         checkAndDrink()
-        wait(1) -- เช็คทุกวินาที แต่จะทำงานทุก 5 วินาทีตาม timer
+        wait(1) 
     end
 end)
 
--- ตัวแปรสำหรับ Auto Farm V2
+
 local isAutoFarmV2Enabled = false
 local V2_FALLBACK_POS = Vector3.new(2749.52832, 5.82073069, -441.214996)
 local V2_FALLBACK_CFRAME = CFrame.new(2749.52832, 5.82073069, -441.214996, -0.99904561, -0.043678835, -6.72199531e-06, -0.0436372757, 0.99808836, 0.0437650755, -0.00190489832, 0.0437235981, -0.999041796)
 local lastV2Check = 0
 
--- ฟังก์ชันเทเลพอร์ตไปหา Banana V2
+
 local function teleportToBananaV2()
     if isSellingMode or not isAutoFarmV2Enabled then return end
     
@@ -610,7 +601,7 @@ local function teleportToBananaV2()
     end
 end
 
--- ฟังก์ชันตรวจสอบจำนวน Banana V2
+
 local function checkBananaAmountV2()
     if not isSellingMode and isAutoFarmV2Enabled then
         local success, bananaText = pcall(function()
@@ -627,7 +618,6 @@ local function checkBananaAmountV2()
     end
 end
 
--- ฟังก์ชันหลัก V2
 local function mainLoopV2()
     spawn(function()
         while true do
@@ -640,7 +630,6 @@ local function mainLoopV2()
     end)
 end
 
--- เพิ่ม Toggle V2 ใน UI (เพิ่มหลัง Auto Farm Banana เดิม)
 local AutoFarmV2Toggle = Tabs.Main:AddToggle("AutoFarmBananaV2", {
     Title = "Auto Farm Banana V2",
     Description = "เหมือน V1 แต่วาปไปตำแหน่งใหม่เมื่อไม่เจอ MeshPart Banana",
@@ -649,7 +638,7 @@ local AutoFarmV2Toggle = Tabs.Main:AddToggle("AutoFarmBananaV2", {
         isAutoFarmV2Enabled = state
         if state then
             print("🍌 Auto Farm Banana V2 Started!")
-            -- ปิด V1 ถ้าเปิดอยู่
+
             if isAutoFarmEnabled then
                 AutoFarmToggle:SetValue(false)
             end
@@ -663,12 +652,12 @@ local AutoFarmV2Toggle = Tabs.Main:AddToggle("AutoFarmBananaV2", {
     end
 })
 
--- แก้ไข Toggle V1 เพื่อปิด V2 เมื่อเปิด V1
+
 AutoFarmToggle.Callback = function(state)
     isAutoFarmEnabled = state
     if state then
         print("🍌 Auto Farm Banana Started!")
-        -- ปิด V2 ถ้าเปิดอยู่
+
         if isAutoFarmV2Enabled then
             AutoFarmV2Toggle:SetValue(false)
         end
@@ -679,15 +668,15 @@ AutoFarmToggle.Callback = function(state)
     end
 end
 
--- อัปเดตฟังก์ชัน checkBananaAmount เดิมให้รองรับ V2
+
 local originalCheckBananaAmount = checkBananaAmount
 checkBananaAmount = function()
     spawn(function()
         while true do
             wait(1)
             updateBananaCountDisplay()
-            checkBananaAmountV2() -- เช็ค V2
-            if not isSellingMode and isAutoFarmEnabled then -- เช็ค V1
+            checkBananaAmountV2()
+            if not isSellingMode and isAutoFarmEnabled then
                 local success, bananaText = pcall(function()
                     return LocalPlayer.PlayerGui.Inventory.Main.List.Body.Banana.Amount.Text
                 end)
@@ -704,7 +693,7 @@ checkBananaAmount = function()
     end)
 end
 
--- อัปเดต CharacterAdded เพื่อรองรับ V2
+
 LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     Character = newCharacter
     Humanoid = Character:WaitForChild("Humanoid")
@@ -729,3 +718,4 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 print("🍌 Banana Farm Script with UI Started!")
+
